@@ -2,8 +2,8 @@
 
 RSpec.describe RuboCop::Cop::Performance::Detect, :config do
   let(:collection_method) { nil }
-  let(:config) do
-    RuboCop::Config.new('Style/CollectionMethods' => { 'PreferredMethods' => { 'detect' => collection_method } })
+  let(:other_cops) do
+    { 'Style/CollectionMethods' => { 'PreferredMethods' => { 'detect' => collection_method } } }
   end
 
   # rspec will not let you use a variable assigned using let outside
@@ -189,6 +189,50 @@ RSpec.describe RuboCop::Cop::Performance::Detect, :config do
 
   it 'does not register an offense when detect is used' do
     expect_no_offenses('[1, 2, 3].detect { |i| i % 2 == 0 }')
+  end
+
+  context 'AllowedReceivers: [each_node]' do
+    let(:cop_config) { { 'AllowedReceivers' => %w[each_node] } }
+
+    context 'when the receiver is allowed' do
+      select_methods.each do |method|
+        it "does not register on offense when first is called on #{method}" do
+          expect_no_offenses(<<~RUBY)
+            each_node.#{method} { |i| i % 2 == 0 }.first
+          RUBY
+        end
+
+        it "does not register on offense when first is called on #{method} with safe navigation" do
+          expect_no_offenses(<<~RUBY)
+            each_node&.#{method} { |i| i % 2 == 0 }.first
+          RUBY
+        end
+
+        it "does not register an offense and corrects when last is called on #{method}" do
+          expect_no_offenses(<<~RUBY)
+            each_node.#{method} { |i| i % 2 == 0 }.last
+          RUBY
+        end
+
+        it "does not register on offense when last is called on #{method} with safe navigation" do
+          expect_no_offenses(<<~RUBY)
+            each_node&.#{method} { |i| i % 2 == 0 }.last
+          RUBY
+        end
+
+        it "does not register an offense with #{method} short syntax and [0]" do
+          expect_no_offenses(<<~RUBY)
+            each_node.#{method}(&:even?)[0]
+          RUBY
+        end
+
+        it "does not register an offense with #{method} short syntax and [-1]" do
+          expect_no_offenses(<<~RUBY)
+            each_node.#{method}(&:even?)[-1]
+          RUBY
+        end
+      end
+    end
   end
 
   context 'autocorrect' do

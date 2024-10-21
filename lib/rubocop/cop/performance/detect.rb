@@ -29,6 +29,7 @@ module RuboCop
       #
       class Detect < Base
         extend AutoCorrector
+        include AllowedReceivers
 
         CANDIDATE_METHODS = Set[:select, :find_all, :filter].freeze
 
@@ -56,6 +57,7 @@ module RuboCop
 
             return unless args.empty?
             return unless receiver
+            return if allowed_receiver?(receiver)
 
             receiver, _args, body = *receiver if receiver.block_type?
             return if accept_first_call?(receiver, body)
